@@ -136,7 +136,7 @@ func handleCommands(commands chan Command, done chan bool, font *ttf.Font, slide
 				slideIdx -= 1
 			}
 		case ToggleFullscreen:
-			/* Toggle Fullscreen */
+			sdl.WM_ToggleFullScreen(surf)
 		case Quit:
 			log.Printf(`quit`)
 			done <- true
