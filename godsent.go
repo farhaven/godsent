@@ -200,7 +200,7 @@ func main() {
 	}
 	defer sdl.Quit()
 	sdl.WM_SetCaption("GodSent", "") // title of presentation?
-	sdl.SetVideoMode(1280, 800, 32, 0) // sdl.FULLSCREEN)
+	sdl.SetVideoMode(1024, 768, 32, 0) // sdl.FULLSCREEN)
 
 	done := make(chan bool)
 	commandchan := make(chan Command)
