@@ -159,12 +159,10 @@ func handleCommands(commands chan Command, done chan bool, fonts []*ttf.Font, sl
 		switch cmd {
 		case NextSlide:
 			if slideIdx < len(slides)-1 {
-				log.Printf(`next slide`)
 				slideIdx += 1
 			}
 		case PrevSlide:
 			if slideIdx > 0 {
-				log.Printf(`prev slide`)
 				slideIdx -= 1
 			}
 		case ToggleFullscreen:
