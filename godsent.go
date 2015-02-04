@@ -81,7 +81,7 @@ func drawImage(src *sdl.Surface, tgt *sdl.Surface) error {
 
 // Draws `text` to s using font `font`
 func drawText(text string, font *ttf.Font, s *sdl.Surface) error {
-	ts := ttf.RenderUTF8_Solid(font, text, sdl.Color{0, 0, 0, 0})
+	ts := ttf.RenderUTF8_Blended(font, text, sdl.Color{0, 0, 0, 0})
 	return drawImage(ts, s)
 }
 
