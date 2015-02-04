@@ -131,7 +131,7 @@ func loadFont(name string) ([]*ttf.Font, error) {
 
 	var fonts []*ttf.Font
 
-	for sz := 10; sz <= 100; sz += 10 {
+	for sz := 10; sz <= 200; sz += 10 {
 		font := ttf.OpenFont(name, sz)
 		if font == nil {
 			return nil, fmt.Errorf(`couldn't load font "%s" with size=%d`, name, sz)
