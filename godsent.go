@@ -187,7 +187,7 @@ func main() {
 
 	slides, err := loadSlides(os.Args[1])
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatal(`can't load slides: %s`, err)
 	}
 
 	fonts, err := loadFont("UbuntuMono-R.ttf")
