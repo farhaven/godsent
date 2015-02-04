@@ -72,24 +72,10 @@ func loadSlides(fname string) ([]Slide, error) {
 	return slides, nil
 }
 
-// Draws content of image file `name` to i
-func drawImage(name string, i draw.Image) error {
-	// f, err := os.Open("nyan.png")
-	f, err := os.Open(name)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	m, _, err := image.Decode(f)
-	if err != nil {
-		return err
-	}
-
-	draw.Draw(i, i.Bounds(), image.White, image.ZP, draw.Src)
-	draw.Draw(i, i.Bounds(), m, image.ZP, draw.Src)
-
-	return nil
+// Draws `img` to `target`
+func drawImage(img image.Image, target draw.Image) {
+	draw.Draw(target, target.Bounds(), image.White, image.ZP, draw.Src)
+	draw.Draw(target, target.Bounds(), img, image.ZP, draw.Src)
 }
 
 // Draws `text` to i using font `font`
@@ -108,6 +94,17 @@ func drawText(text string, font *truetype.Font, i draw.Image) error {
 	}
 
 	return nil
+}
+
+func drawSlide(s Slide, font *truetype.Font, w ui.Window) {
+	rgba := image.NewRGBA(w.Screen().Bounds())
+	if s.Image != nil {
+		drawImage(*s.Image, rgba)
+	} else {
+		drawText(s.Text, font, rgba)
+	}
+	draw.Draw(w.Screen(), w.Screen().Bounds(), rgba, image.ZP, draw.Src)
+	w.FlushImage()
 }
 
 func loadFont(name string) (*truetype.Font, error) {
@@ -145,23 +142,23 @@ func main() {
 	}
 	defer w.Close()
 
-	rgba := image.NewRGBA(w.Screen().Bounds())
-	// drawText("Foo", rgba)
-	drawImage("nyan.png", rgba)
-	log.Printf("%v", w.Screen().Bounds())
-	draw.Draw(w.Screen(), w.Screen().Bounds(), rgba, image.ZP, draw.Src)
-	w.FlushImage()
+	slideIdx := 0
+	drawSlide(slides[slideIdx], font, w)
 
 	for e := range w.EventChan() {
 		switch e := e.(type) {
 		case ui.KeyEvent:
-			if e.Key == 'q' {
+			switch e.Key {
+			case 'q':
 				return
-			}
-			if e.Key == ' ' {
-				drawText(slides[0].Text, font, rgba)
-				draw.Draw(w.Screen(), w.Screen().Bounds(), rgba, image.ZP, draw.Src)
-				w.FlushImage()
+			case ' ':
+				if slideIdx < len(slides) - 1 {
+					slideIdx += 1
+				}
+			case 'b':
+				if slideIdx > 0 {
+					slideIdx -= 1
+				}
 			}
 			// log.Printf(`key press: %v`, e.Key)
 		case ui.ConfigEvent:
@@ -171,5 +168,6 @@ func main() {
 		default:
 			log.Printf(`unhandled event: %v`, e)
 		}
+		drawSlide(slides[slideIdx], font, w)
 	}
 }
