@@ -6,8 +6,13 @@ import (
 	"log"
 	"os"
 
+	_ "image"
+	_ "image/png"
+
 	"github.com/scottferg/Go-SDL/sdl"
 	"github.com/scottferg/Go-SDL/ttf"
+
+	"github.com/ungerik/go-cairo"
 )
 
 type Command int
@@ -23,7 +28,7 @@ const (
 
 type Slide struct {
 	Text  string
-	Image *sdl.Surface
+	Image *cairo.Surface
 }
 
 func loadSlides(fname string) ([]Slide, error) {
@@ -42,12 +47,18 @@ func loadSlides(fname string) ([]Slide, error) {
 		}
 		switch line[0] {
 		case '@':
-			/* image slide */
-			img := sdl.Load(line[1:])
-			if img == nil {
-				return nil, fmt.Errorf(`%s`, sdl.GetError())
+			// image slide
+			/*
+			fh, err := os.Open(line[1:])
+			if err != nil {
+				return nil, err
 			}
-			slides = append(slides, Slide{"", img})
+			img, _, err := image.Decode(fh)
+			if err != nil {
+				return nil, err
+			}
+			*/
+			slides = append(slides, Slide{"", cairo.NewSurfaceFromPNG(line[1:])})
 		case '#':
 			/* comment slide */
 			log.Printf(`comment: %s`, line)
@@ -65,11 +76,19 @@ func loadSlides(fname string) ([]Slide, error) {
 }
 
 // Draws `img` to `target`
-func drawImage(src *sdl.Surface, tgt *sdl.Surface) error {
+func drawImage(src *cairo.Surface, tgt *sdl.Surface) error {
+	surf := sdl.CreateRGBSurfaceFrom(src.GetData(),
+		src.GetWidth(), src.GetHeight(),
+		32 /* bpp */, src.GetWidth() * 4 /* pitch */,
+		0x00FF0000 /* rmask */,
+		0x0000FF00 /* gmask */,
+		0x000000FF /* bmask */,
+		0/* amask */)
+
 	var srcrect sdl.Rect
 	var dstrect sdl.Rect
 
-	src.GetClipRect(&srcrect)
+	surf.GetClipRect(&srcrect)
 	tgt.GetClipRect(&dstrect)
 
 	dstrect.X = int16((dstrect.W / 2) - (srcrect.W / 2))
@@ -77,7 +96,7 @@ func drawImage(src *sdl.Surface, tgt *sdl.Surface) error {
 	dstrect.W = srcrect.W
 	dstrect.H = srcrect.H
 
-	if tgt.Blit(&dstrect, src, &srcrect) != 0 {
+	if tgt.Blit(&dstrect, surf, &srcrect) != 0 {
 		return fmt.Errorf(`%s`, sdl.GetError())
 	}
 
@@ -89,28 +108,32 @@ func drawText(text string, fonts []*ttf.Font, s *sdl.Surface) error {
 	var r sdl.Rect
 	s.GetClipRect(&r)
 
-	tgtheight := int(float32(r.H) * 0.9)
-	tgtwidth := int(float32(r.W) * 0.9)
+	tgtheight := float64(r.H) * 0.9
+	tgtwidth := float64(r.W) * 0.9
 
-	var font *ttf.Font
+	surf := cairo.NewSurface(cairo.FORMAT_ARGB32, int(tgtwidth), int(tgtheight))
+	surf.SetSourceRGB(1, 1, 1)
+	surf.Rectangle(0, 0, float64(surf.GetWidth()), float64(surf.GetHeight()))
+	surf.Fill()
 
-	for _, fnt := range fonts {
-		width, height, err := fnt.SizeUTF8(text)
-		if err != 0 {
-			return fmt.Errorf(`%s`, sdl.GetError())
-		}
-		if width < tgtwidth && height < tgtheight {
-			font = fnt
+	surf.SetSourceRGB(0, 0, 0)
+	surf.SelectFontFace("Ubuntu Mono", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL)
+	size := float64(0)
+	var ext *cairo.TextExtents
+	for sz := float64(10); sz <= 800; sz += 10 {
+		surf.SetFontSize(sz)
+		ext = surf.TextExtents(text)
+		if ext.Width < tgtwidth && ext.Height < tgtheight {
+			size = sz
+		} else {
+			break
 		}
 	}
+	surf.MoveTo(0, (float64(surf.GetHeight()) + ext.Height) / 2)
+	surf.SetFontSize(size)
+	surf.ShowText(text)
 
-	/* If even the smallest font doesn't fit, select it anyway */
-	if font == nil {
-		font = fonts[len(fonts)-1]
-	}
-
-	ts := ttf.RenderUTF8_Blended(font, text, sdl.Color{0, 0, 0, 0})
-	return drawImage(ts, s)
+	return drawImage(surf, s)
 }
 
 func colorToUint(c sdl.Color) uint32 {
