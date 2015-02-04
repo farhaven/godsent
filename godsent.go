@@ -85,7 +85,7 @@ func drawText(text string, fonts []*ttf.Font, s *sdl.Surface) error {
 	s.GetClipRect(&r)
 
 	tgtheight := int(float32(r.H) * 0.9)
-	tgtwidth  := int(float32(r.W) * 0.9)
+	tgtwidth := int(float32(r.W) * 0.9)
 
 	var font *ttf.Font
 
@@ -101,7 +101,7 @@ func drawText(text string, fonts []*ttf.Font, s *sdl.Surface) error {
 
 	/* If even the smallest font doesn't fit, select it anyway */
 	if font == nil {
-		font = fonts[len(fonts) - 1]
+		font = fonts[len(fonts)-1]
 	}
 
 	ts := ttf.RenderUTF8_Blended(font, text, sdl.Color{0, 0, 0, 0})
