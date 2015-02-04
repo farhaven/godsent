@@ -175,7 +175,11 @@ func handleCommands(commands chan Command, done chan bool, fonts []*ttf.Font, sl
 }
 
 func main() {
-	slides, err := loadSlides("example")
+	if len(os.Args) != 2 {
+		log.Fatalf(`Usage: %s slideset`, os.Args[0])
+	}
+
+	slides, err := loadSlides(os.Args[1])
 	if err != nil {
 		log.Fatalln(err)
 	}
