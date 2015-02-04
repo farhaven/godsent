@@ -1,7 +1,6 @@
 /* TODO:
  * - abstract slides
  * - render text
- * - parse sent-style source file
  * - white background
  * - center everything
  */
@@ -29,8 +28,8 @@ import (
 )
 
 type Slide struct {
-	text string
-	image *image.Image
+	Text string
+	Image *image.Image
 }
 
 func loadSlides(fname string) ([]Slide, error) {
@@ -47,7 +46,6 @@ func loadSlides(fname string) ([]Slide, error) {
 		switch line[0] {
 		case '@':
 			/* image slide */
-			log.Println(line[1:])
 			fh, err := os.Open(line[1:])
 			if err != nil {
 				return nil, err
@@ -65,6 +63,10 @@ func loadSlides(fname string) ([]Slide, error) {
 			/* regular text slide */
 			slides = append(slides, Slide{line, nil})
 		}
+	}
+
+	if scanner.Err() != nil {
+		return nil, scanner.Err()
 	}
 
 	return slides, nil
@@ -108,25 +110,33 @@ func drawText(text string, font *truetype.Font, i draw.Image) error {
 	return nil
 }
 
+func loadFont(name string) (*truetype.Font, error) {
+	fontReader, err := fonts.Load(name)
+	if err != nil {
+		return nil, err
+	}
+	fontBytes, err := ioutil.ReadAll(fontReader)
+	if err != nil {
+		return nil, err
+	}
+	font, err := freetype.ParseFont(fontBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return font, nil
+}
+
 func main() {
 	slides, err := loadSlides("example")
 	if err != nil {
 		log.Fatalln(err)
 	}
 	log.Printf("slides: %v", slides)
-	return
 
-	fontReader, err := fonts.Load("UbuntuMono-R")
+	font, err := loadFont("UbuntuMono-R")
 	if err != nil {
-		log.Fatalf(`can't open font: %s`, err)
-	}
-	fontBytes, err := ioutil.ReadAll(fontReader)
-	if err != nil {
-		log.Fatalf(`can't read font: %s`, err)
-	}
-	font, err := freetype.ParseFont(fontBytes)
-	if err != nil {
-		log.Fatalf(`can't parse font: %s`, err)
+		log.Fatalf(`can't load font: %s`, err)
 	}
 
 	w, err := x11.NewWindow()
@@ -149,7 +159,7 @@ func main() {
 				return
 			}
 			if e.Key == ' ' {
-				drawText("foo00, x == z", font, rgba)
+				drawText(slides[0].Text, font, rgba)
 				draw.Draw(w.Screen(), w.Screen().Bounds(), rgba, image.ZP, draw.Src)
 				w.FlushImage()
 			}
