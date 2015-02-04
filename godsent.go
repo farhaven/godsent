@@ -37,6 +37,9 @@ func loadSlides(fname string) ([]Slide, error) {
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		line := scanner.Text()
+		if len(line) == 0 {
+			continue
+		}
 		switch line[0] {
 		case '@':
 			/* image slide */
