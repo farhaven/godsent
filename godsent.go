@@ -79,8 +79,31 @@ func drawImage(src *sdl.Surface, tgt *sdl.Surface) error {
 	return nil
 }
 
-// Draws `text` to s using font `font`
-func drawText(text string, font *ttf.Font, s *sdl.Surface) error {
+// Draws `text` to s using the largest possible font in `fonts`
+func drawText(text string, fonts []*ttf.Font, s *sdl.Surface) error {
+	var r sdl.Rect
+	s.GetClipRect(&r)
+
+	tgtheight := int(float32(r.H) * 0.9)
+	tgtwidth  := int(float32(r.W) * 0.9)
+
+	var font *ttf.Font
+
+	for _, fnt := range fonts {
+		width, height, err := fnt.SizeUTF8(text)
+		if err != 0 {
+			return fmt.Errorf(`%s`, sdl.GetError())
+		}
+		if width < tgtwidth && height < tgtheight {
+			font = fnt
+		}
+	}
+
+	/* If even the smallest font doesn't fit, select it anyway */
+	if font == nil {
+		font = fonts[len(fonts) - 1]
+	}
+
 	ts := ttf.RenderUTF8_Blended(font, text, sdl.Color{0, 0, 0, 0})
 	return drawImage(ts, s)
 }
@@ -89,39 +112,48 @@ func colorToUint(c sdl.Color) uint32 {
 	return uint32(c.R)<<24 | uint32(c.G)<<16 | uint32(c.B)<<8 | uint32(c.Unused)
 }
 
-func drawSlide(s Slide, font *ttf.Font, surf *sdl.Surface) {
+func drawSlide(s Slide, fonts []*ttf.Font, surf *sdl.Surface) {
 	var dstrect sdl.Rect
 	surf.GetClipRect(&dstrect)
 	surf.FillRect(&dstrect, colorToUint(sdl.Color{255, 255, 255, 255}))
 	if s.Image != nil {
 		drawImage(s.Image, surf)
 	} else {
-		drawText(s.Text, font, surf)
+		drawText(s.Text, fonts, surf)
 	}
 	surf.Flip()
 }
 
-func loadFont(name string) (*ttf.Font, error) {
+func loadFont(name string) ([]*ttf.Font, error) {
 	if ttf.Init() != 0 {
 		return nil, fmt.Errorf(`couldn't init ttf`)
 	}
 
-	font := ttf.OpenFont(name, 45)
-	if font == nil {
-		return nil, fmt.Errorf(`couldn't load font "%s"`, name)
+	var fonts []*ttf.Font
+
+	for sz := 10; sz <= 100; sz += 10 {
+		font := ttf.OpenFont(name, sz)
+		if font == nil {
+			return nil, fmt.Errorf(`couldn't load font "%s" with size=%d`, name, sz)
+		}
+		fonts = append(fonts, font)
 	}
 
-	return font, nil
+	return fonts, nil
 }
 
 func getNameFromKeysym(k sdl.Keysym) string {
 	return sdl.GetKeyName(sdl.Key(k.Sym))
 }
 
-func handleCommands(commands chan Command, done chan bool, font *ttf.Font, slides []Slide) {
+func handleCommands(commands chan Command, done chan bool, fonts []*ttf.Font, slides []Slide) {
+	defer func() {
+		done <- true
+	}()
+
 	surf := sdl.GetVideoSurface()
 	slideIdx := 0
-	drawSlide(slides[slideIdx], font, surf)
+	drawSlide(slides[slideIdx], fonts, surf)
 
 	for cmd := range commands {
 		switch cmd {
@@ -138,11 +170,9 @@ func handleCommands(commands chan Command, done chan bool, font *ttf.Font, slide
 		case ToggleFullscreen:
 			sdl.WM_ToggleFullScreen(surf)
 		case Quit:
-			log.Printf(`quit`)
-			done <- true
 			return
 		}
-		drawSlide(slides[slideIdx], font, surf)
+		drawSlide(slides[slideIdx], fonts, surf)
 	}
 }
 
@@ -152,14 +182,13 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	font, err := loadFont("UbuntuMono-R.ttf")
+	fonts, err := loadFont("UbuntuMono-R.ttf")
 	if err != nil {
 		log.Fatalf(`can't load font: %s`, err)
 	}
-	defer font.Close()
 
 	if sdl.Init(sdl.INIT_VIDEO) != 0 {
-		log.Fatalln(`couldn't init sdl video`)
+		log.Fatalf(`couldn't init sdl video: %s`, sdl.GetError())
 	}
 	defer sdl.Quit()
 	sdl.WM_SetCaption("GodSent", "") // title of presentation?
@@ -168,7 +197,7 @@ func main() {
 
 	done := make(chan bool)
 	commandchan := make(chan Command)
-	go handleCommands(commandchan, done, font, slides)
+	go handleCommands(commandchan, done, fonts, slides)
 
 eventloop:
 	for e := range sdl.Events {
