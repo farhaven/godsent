@@ -10,7 +10,6 @@ import (
 	_ "image/png"
 
 	"github.com/scottferg/Go-SDL/sdl"
-	"github.com/scottferg/Go-SDL/ttf"
 
 	"github.com/ungerik/go-cairo"
 )
@@ -49,14 +48,14 @@ func loadSlides(fname string) ([]Slide, error) {
 		case '@':
 			// image slide
 			/*
-			fh, err := os.Open(line[1:])
-			if err != nil {
-				return nil, err
-			}
-			img, _, err := image.Decode(fh)
-			if err != nil {
-				return nil, err
-			}
+				fh, err := os.Open(line[1:])
+				if err != nil {
+					return nil, err
+				}
+				img, _, err := image.Decode(fh)
+				if err != nil {
+					return nil, err
+				}
 			*/
 			slides = append(slides, Slide{"", cairo.NewSurfaceFromPNG(line[1:])})
 		case '#':
@@ -79,11 +78,11 @@ func loadSlides(fname string) ([]Slide, error) {
 func drawImage(src *cairo.Surface, tgt *sdl.Surface) error {
 	surf := sdl.CreateRGBSurfaceFrom(src.GetData(),
 		src.GetWidth(), src.GetHeight(),
-		32 /* bpp */, src.GetWidth() * 4 /* pitch */,
-		0x00FF0000 /* rmask */,
-		0x0000FF00 /* gmask */,
-		0x000000FF /* bmask */,
-		0/* amask */)
+		32 /* bpp */, src.GetWidth()*4, /* pitch */
+		0x00FF0000, /* rmask */
+		0x0000FF00, /* gmask */
+		0x000000FF, /* bmask */
+		0 /* amask */)
 
 	var srcrect sdl.Rect
 	var dstrect sdl.Rect
@@ -104,7 +103,7 @@ func drawImage(src *cairo.Surface, tgt *sdl.Surface) error {
 }
 
 // Draws `text` to s using the largest possible font in `fonts`
-func drawText(text string, fonts []*ttf.Font, s *sdl.Surface) error {
+func drawText(text string, s *sdl.Surface) error {
 	var r sdl.Rect
 	s.GetClipRect(&r)
 
@@ -129,7 +128,7 @@ func drawText(text string, fonts []*ttf.Font, s *sdl.Surface) error {
 			break
 		}
 	}
-	surf.MoveTo(0, (float64(surf.GetHeight()) + ext.Height) / 2)
+	surf.MoveTo(0, (float64(surf.GetHeight())+ext.Height)/2)
 	surf.SetFontSize(size)
 	surf.ShowText(text)
 
@@ -140,48 +139,30 @@ func colorToUint(c sdl.Color) uint32 {
 	return uint32(c.R)<<24 | uint32(c.G)<<16 | uint32(c.B)<<8 | uint32(c.Unused)
 }
 
-func drawSlide(s Slide, fonts []*ttf.Font, surf *sdl.Surface) {
+func drawSlide(s Slide, surf *sdl.Surface) {
 	var dstrect sdl.Rect
 	surf.GetClipRect(&dstrect)
 	surf.FillRect(&dstrect, colorToUint(sdl.Color{255, 255, 255, 255}))
 	if s.Image != nil {
 		drawImage(s.Image, surf)
 	} else {
-		drawText(s.Text, fonts, surf)
+		drawText(s.Text, surf)
 	}
 	surf.Flip()
-}
-
-func loadFont(name string) ([]*ttf.Font, error) {
-	if ttf.Init() != 0 {
-		return nil, fmt.Errorf(`couldn't init ttf`)
-	}
-
-	var fonts []*ttf.Font
-
-	for sz := 10; sz <= 500; sz += 10 {
-		font := ttf.OpenFont(name, sz)
-		if font == nil {
-			return nil, fmt.Errorf(`couldn't load font "%s" with size=%d`, name, sz)
-		}
-		fonts = append(fonts, font)
-	}
-
-	return fonts, nil
 }
 
 func getNameFromKeysym(k sdl.Keysym) string {
 	return sdl.GetKeyName(sdl.Key(k.Sym))
 }
 
-func handleCommands(commands chan Command, done chan bool, fonts []*ttf.Font, slides []Slide) {
+func handleCommands(commands chan Command, done chan bool, slides []Slide) {
 	defer func() {
 		done <- true
 	}()
 
 	surf := sdl.GetVideoSurface()
 	slideIdx := 0
-	drawSlide(slides[slideIdx], fonts, surf)
+	drawSlide(slides[slideIdx], surf)
 
 	for cmd := range commands {
 		switch cmd {
@@ -202,7 +183,7 @@ func handleCommands(commands chan Command, done chan bool, fonts []*ttf.Font, sl
 		case Quit:
 			return
 		}
-		drawSlide(slides[slideIdx], fonts, surf)
+		drawSlide(slides[slideIdx], surf)
 	}
 }
 
@@ -220,21 +201,16 @@ func main() {
 		slides = append(slides, s...)
 	}
 
-	fonts, err := loadFont("UbuntuMono-R.ttf")
-	if err != nil {
-		log.Fatalf(`can't load font: %s`, err)
-	}
-
 	if sdl.Init(sdl.INIT_VIDEO) != 0 {
 		log.Fatalf(`couldn't init sdl video: %s`, sdl.GetError())
 	}
 	defer sdl.Quit()
-	sdl.WM_SetCaption("GodSent", "") // title of presentation?
+	sdl.WM_SetCaption("GodSent", "")   // title of presentation?
 	sdl.SetVideoMode(1024, 768, 32, 0) // sdl.FULLSCREEN)
 
 	done := make(chan bool)
 	commandchan := make(chan Command)
-	go handleCommands(commandchan, done, fonts, slides)
+	go handleCommands(commandchan, done, slides)
 
 eventloop:
 	for e := range sdl.Events {
