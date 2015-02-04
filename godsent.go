@@ -184,13 +184,17 @@ func handleCommands(commands chan Command, done chan bool, fonts []*ttf.Font, sl
 }
 
 func main() {
-	if len(os.Args) != 2 {
+	if len(os.Args) < 2 {
 		log.Fatalf(`Usage: %s slideset`, os.Args[0])
 	}
 
-	slides, err := loadSlides(os.Args[1])
-	if err != nil {
-		log.Fatal(`can't load slides: %s`, err)
+	var slides []Slide
+	for _, a := range os.Args[1:] {
+		s, err := loadSlides(a)
+		if err != nil {
+			log.Fatalf(`can't load slides: %s`, err)
+		}
+		slides = append(slides, s...)
 	}
 
 	fonts, err := loadFont("UbuntuMono-R.ttf")
