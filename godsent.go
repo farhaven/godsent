@@ -106,7 +106,7 @@ func loadFont(name string) (*ttf.Font, error) {
 		return nil, fmt.Errorf(`couldn't init ttf`)
 	}
 
-	font := ttf.OpenFont(name, 32)
+	font := ttf.OpenFont(name, 45)
 	if font == nil {
 		return nil, fmt.Errorf(`couldn't load font "%s"`, name)
 	}
