@@ -13,8 +13,10 @@ import (
 type Command int
 
 const (
-	NextSlide = iota
+	FirstSlide = iota
+	NextSlide
 	PrevSlide
+	LastSlide
 	ToggleFullscreen
 	Quit
 )
@@ -157,6 +159,10 @@ func handleCommands(commands chan Command, done chan bool, fonts []*ttf.Font, sl
 
 	for cmd := range commands {
 		switch cmd {
+		case FirstSlide:
+			slideIdx = 0
+		case LastSlide:
+			slideIdx = len(slides) - 1
 		case NextSlide:
 			if slideIdx < len(slides)-1 {
 				slideIdx += 1
@@ -217,6 +223,10 @@ eventloop:
 				commandchan <- NextSlide
 			case `b`:
 				commandchan <- PrevSlide
+			case `home`:
+				commandchan <- FirstSlide
+			case `end`:
+				commandchan <- LastSlide
 			case `f`:
 				commandchan <- ToggleFullscreen
 			case `q`:
