@@ -1,7 +1,3 @@
-/* TODO:
- * - center everything
- */
-
 package main
 
 import (
@@ -65,12 +61,16 @@ func loadSlides(fname string) ([]Slide, error) {
 
 // Draws `img` to `target`
 func drawImage(src *sdl.Surface, tgt *sdl.Surface) error {
-	/* TODO: center image */
 	var srcrect sdl.Rect
 	var dstrect sdl.Rect
 
 	src.GetClipRect(&srcrect)
 	tgt.GetClipRect(&dstrect)
+
+	dstrect.X = int16((dstrect.W / 2) - (srcrect.W / 2))
+	dstrect.Y = int16((dstrect.H / 2) - (srcrect.H / 2))
+	dstrect.W = srcrect.W
+	dstrect.H = srcrect.H
 
 	if tgt.Blit(&dstrect, src, &srcrect) != 0 {
 		return fmt.Errorf(`%s`, sdl.GetError())
