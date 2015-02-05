@@ -156,7 +156,7 @@ func drawText(text string, s *sdl.Surface) error {
 			break
 		}
 	}
-	surf.MoveTo(0, (float64(surf.GetHeight())+ext.Height)/2)
+	surf.MoveTo(0, float64(surf.GetHeight()/2)-((ext.Height/2)+ext.Ybearing))
 	surf.SetFontSize(size)
 	surf.ShowText(text)
 
