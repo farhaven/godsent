@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 
-	_ "image"
+	"image"
 	_ "image/png"
 
 	"github.com/scottferg/Go-SDL/sdl"
@@ -47,17 +47,15 @@ func loadSlides(fname string) ([]Slide, error) {
 		switch line[0] {
 		case '@':
 			// image slide
-			/*
-				fh, err := os.Open(line[1:])
-				if err != nil {
-					return nil, err
-				}
-				img, _, err := image.Decode(fh)
-				if err != nil {
-					return nil, err
-				}
-			*/
-			slides = append(slides, Slide{"", cairo.NewSurfaceFromPNG(line[1:])})
+			fh, err := os.Open(line[1:])
+			if err != nil {
+				return nil, err
+			}
+			img, _, err := image.Decode(fh)
+			if err != nil {
+				return nil, err
+			}
+			slides = append(slides, Slide{"", cairo.NewSurfaceFromImage(img)})
 		case '#':
 			/* comment slide */
 			log.Printf(`comment: %s`, line)
