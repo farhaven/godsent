@@ -90,12 +90,15 @@ func drawImage(src *cairo.Surface, tgt *sdl.Surface, zoom bool) error {
 		tgtheight = float64(src.GetHeight()) * math.Min(sx, sy)
 
 		newsrc := cairo.NewSurface(src.GetFormat(), int(tgtwidth), int(tgtheight))
-		newsrc.Scale(math.Min(sx, sy), math.Min(sx, sy))
+
 		newsrc.SetSourceRGB(1, 1, 1)
 		newsrc.Rectangle(0, 0, tgtwidth, tgtheight)
 		newsrc.Fill()
+
+		newsrc.Scale(math.Min(sx, sy), math.Min(sx, sy))
 		newsrc.SetOperator(cairo.OPERATOR_SOURCE)
 		newsrc.SetSourceSurface(src, 0, 0)
+
 		newsrc.Paint()
 
 		src = newsrc
