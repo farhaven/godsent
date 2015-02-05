@@ -4,13 +4,13 @@ import (
 	"bufio"
 	"fmt"
 	"log"
+	"math"
 	"os"
 
 	"image"
 	_ "image/png"
 
 	"github.com/scottferg/Go-SDL/sdl"
-
 	"github.com/ungerik/go-cairo"
 )
 
@@ -73,7 +73,34 @@ func loadSlides(fname string) ([]Slide, error) {
 }
 
 // Draws `img` to `target`
-func drawImage(src *cairo.Surface, tgt *sdl.Surface) error {
+func drawImage(src *cairo.Surface, tgt *sdl.Surface, zoom bool) error {
+	var srcrect sdl.Rect
+	var dstrect sdl.Rect
+
+	tgt.GetClipRect(&dstrect)
+
+	if zoom {
+		tgtwidth := float64(dstrect.W) * 0.9
+		tgtheight := float64(dstrect.H) * 0.9
+
+		sx := tgtwidth / float64(src.GetWidth())
+		sy := tgtheight / float64(src.GetHeight())
+
+		tgtwidth = float64(src.GetWidth()) * math.Min(sx, sy)
+		tgtheight = float64(src.GetHeight()) * math.Min(sx, sy)
+
+		newsrc := cairo.NewSurface(src.GetFormat(), int(tgtwidth), int(tgtheight))
+		newsrc.Scale(math.Min(sx, sy), math.Min(sx, sy))
+		newsrc.SetSourceRGB(1, 1, 1)
+		newsrc.Rectangle(0, 0, tgtwidth, tgtheight)
+		newsrc.Fill()
+		newsrc.SetOperator(cairo.OPERATOR_SOURCE)
+		newsrc.SetSourceSurface(src, 0, 0)
+		newsrc.Paint()
+
+		src = newsrc
+	}
+
 	surf := sdl.CreateRGBSurfaceFrom(src.GetData(),
 		src.GetWidth(), src.GetHeight(),
 		32 /* bpp */, src.GetWidth()*4, /* pitch */
@@ -82,14 +109,14 @@ func drawImage(src *cairo.Surface, tgt *sdl.Surface) error {
 		0x000000FF, /* bmask */
 		0 /* amask */)
 
-	var srcrect sdl.Rect
-	var dstrect sdl.Rect
-
 	surf.GetClipRect(&srcrect)
-	tgt.GetClipRect(&dstrect)
 
 	dstrect.X = int16((dstrect.W / 2) - (srcrect.W / 2))
 	dstrect.Y = int16((dstrect.H / 2) - (srcrect.H / 2))
+	if zoom {
+		srcrect.X += 1
+		srcrect.Y += 1
+	}
 	dstrect.W = srcrect.W
 	dstrect.H = srcrect.H
 
@@ -120,17 +147,17 @@ func drawText(text string, s *sdl.Surface) error {
 	for sz := float64(10); sz <= 800; sz += 10 {
 		surf.SetFontSize(sz)
 		ext = surf.TextExtents(text)
-		if ext.Width < tgtwidth && ext.Height < tgtheight {
+		if ext.Xadvance < tgtwidth && ext.Yadvance < tgtheight {
 			size = sz
 		} else {
 			break
 		}
 	}
-	surf.MoveTo(0, (float64(surf.GetHeight())+ext.Height)/2)
+	surf.MoveTo(0, (float64(surf.GetHeight()) + ext.Height) / 2)
 	surf.SetFontSize(size)
 	surf.ShowText(text)
 
-	return drawImage(surf, s)
+	return drawImage(surf, s, false)
 }
 
 func colorToUint(c sdl.Color) uint32 {
@@ -142,7 +169,7 @@ func drawSlide(s Slide, surf *sdl.Surface) {
 	surf.GetClipRect(&dstrect)
 	surf.FillRect(&dstrect, colorToUint(sdl.Color{255, 255, 255, 255}))
 	if s.Image != nil {
-		drawImage(s.Image, surf)
+		drawImage(s.Image, surf, true)
 	} else {
 		drawText(s.Text, surf)
 	}
