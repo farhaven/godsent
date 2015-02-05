@@ -42,7 +42,7 @@ func loadSlides(fname string) ([]Slide, error) {
 	for scanner.Scan() {
 		line := scanner.Text()
 		if len(line) == 0 {
-			continue
+			line = " "
 		}
 		switch line[0] {
 		case '@':
