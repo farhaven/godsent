@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"strings"
 	"os"
 
 	"image"
@@ -28,6 +29,7 @@ const (
 type Slide struct {
 	Text  string
 	Image *cairo.Surface
+	Monospace bool
 }
 
 func loadSlides(fname string) ([]Slide, error) {
@@ -55,13 +57,16 @@ func loadSlides(fname string) ([]Slide, error) {
 			if err != nil {
 				return nil, err
 			}
-			slides = append(slides, Slide{"", cairo.NewSurfaceFromImage(img)})
+			slides = append(slides, Slide{"", cairo.NewSurfaceFromImage(img), false})
 		case '#':
 			/* comment slide */
 			log.Printf(`comment: %s`, line)
+		case '`':
+			/* monospaced slide */
+			slides = append(slides, Slide{strings.Trim(line[1:], " "), nil, true})
 		default:
 			/* regular text slide */
-			slides = append(slides, Slide{line, nil})
+			slides = append(slides, Slide{strings.Trim(line, " "), nil, false})
 		}
 	}
 
@@ -131,7 +136,7 @@ func drawImage(src *cairo.Surface, tgt *sdl.Surface, zoom bool) error {
 }
 
 // Draws `text` to s using the largest possible font in `fonts`
-func drawText(text string, s *sdl.Surface) error {
+func drawText(text string, s *sdl.Surface, monospace bool) error {
 	var r sdl.Rect
 	s.GetClipRect(&r)
 
@@ -144,7 +149,11 @@ func drawText(text string, s *sdl.Surface) error {
 	surf.Fill()
 
 	surf.SetSourceRGB(0, 0, 0)
-	surf.SelectFontFace("Ubuntu Mono", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL)
+	if monospace {
+		surf.SelectFontFace("Ubuntu Mono", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL)
+	} else {
+		surf.SelectFontFace("Ubuntu", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL)
+	}
 	size := float64(0)
 	var ext *cairo.TextExtents
 	for sz := float64(10); sz <= 800; sz += 10 {
@@ -174,7 +183,7 @@ func drawSlide(s Slide, surf *sdl.Surface) {
 	if s.Image != nil {
 		drawImage(s.Image, surf, true)
 	} else {
-		drawText(s.Text, surf)
+		drawText(s.Text, surf, s.Monospace)
 	}
 	surf.Flip()
 }
